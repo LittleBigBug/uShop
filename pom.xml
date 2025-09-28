@@ -11,10 +11,10 @@
 	</properties>
 	<repositories>
 		<!-- Spigot repository -->
-		<repository>
-			<id>spigot-repo</id>
-			<url>https://hub.spigotmc.org/nexus/content/groups/public/</url>
-		</repository>
+        <repository>
+            <id>spigot-repo</id>
+            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+        </repository>
 		<!-- Jitpack repository (Vault) -->
 		<repository>
 			<id>jitpack.io</id>
@@ -28,12 +28,12 @@
 	</repositories>
 	<dependencies>
 		<!--Spigot API -->
-		<dependency>
-			<groupId>org.spigotmc</groupId>
-			<artifactId>spigot</artifactId>
-			<version>1.17-R0.1-SNAPSHOT</version>
-			<scope>provided</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.spigotmc</groupId>
+            <artifactId>spigot-api</artifactId>
+            <version>1.21.5-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
 		<!-- Vault API -->
 		<dependency>
 			<groupId>com.github.MilkBowl</groupId>
