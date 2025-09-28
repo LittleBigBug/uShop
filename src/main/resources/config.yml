@@ -3,9 +3,14 @@ gui-rows: 5
 gui-sellitem:
   material: "EMERALD"
   displayname: "&cClick to Sell (&a%total%&c)"
+  custommodeldata: 0
+  # When list is empty, the default is (number of slots - 5)
+  positions: []
+#    - 40
 gui-bottomrow:
   material: "GRAY_STAINED_GLASS_PANE"
   displayname: " "
+  custommodeldata: 0
 receipt:
   message: "&eHover over me to view receipt!"
   header: "&bYou sold:"

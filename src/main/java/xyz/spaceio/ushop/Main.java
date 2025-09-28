@@ -5,15 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.ConcurrentModificationException;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang.WordUtils;
@@ -31,10 +23,10 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.SimplePluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitTask;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -99,9 +91,6 @@ public class Main extends JavaPlugin {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-
-		// init spaceio metrics
-		new Metrics(this);
 	}
 	
 	@Override
@@ -265,36 +254,76 @@ public class Main extends JavaPlugin {
 	public void addCustomItem(CustomItem i) {
 		customItems.add(i);
 	}
+
+    private String getGUIName() {
+        String name = cfg.getString("gui-name");
+        if (name == null) return "§cShop GUI";
+        return name.replace("&", "§");
+    }
 	
 	public boolean isShopGUI(InventoryView inventoryView) {
-		return inventoryView.getTitle().equals(this.getConfig().getString("gui-name").replace("&", "§"));
+		return inventoryView.getTitle().equals(this.getGUIName());
 	}
 
 	public void openShop(Player p) {
-		Inventory inv = Bukkit.createInventory(null, 9 * this.getConfig().getInt("gui-rows"),
-				this.getConfig().getString("gui-name").replace("&", "§"));
-		ItemStack is = new ItemStack(Material.getMaterial(this.getConfig().getString("gui-sellitem.material")));
-		ItemMeta im = is.getItemMeta();
-		im.setDisplayName(this.getConfig().getString("gui-sellitem.displayname").replace('&', '§').replace("%total%",
-				this.getEconomy().format(0)));
-		is.setItemMeta(im);
-		inv.setItem(inv.getSize() - 5, is);
-		
-		ItemStack pane = new ItemStack(Material.valueOf(cfg.getString("gui-bottomrow.material")));
-		ItemMeta meta = pane.getItemMeta();
-		meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', cfg.getString("gui-bottomrow.displayname")));
-		pane.setItemMeta(meta);
-		
-		for (int i = inv.getSize() - 9; i < inv.getSize(); i++) {
-			if (inv.getItem(i) == null || inv.getItem(i).getType().equals(Material.AIR)) {
-				inv.setItem(i, pane.clone());
-			}
-		}
+		Inventory inv = Bukkit.createInventory(null, 9 * cfg.getInt("gui-rows"),
+				this.getGUIName());
+
+        String iMatStr = cfg.getString("gui-sellitem.material");
+        if (iMatStr == null || iMatStr.isBlank()) iMatStr = "EMERALD";
+
+        Material mat = Material.getMaterial(iMatStr);
+        if (mat == null) mat = Material.EMERALD;
+
+		ItemStack is = new ItemStack(mat);
+		ItemMeta imeta = is.getItemMeta();
+
+        if (imeta != null) {
+            imeta.setDisplayName(this.getConfig().getString("gui-sellitem.displayname").replace('&', '§').replace("%total%",
+                    this.getEconomy().format(0)));
+
+            int customModelData = cfg.getInt("gui-sellitem.custommodeldata");
+            if (customModelData > 0) {
+                CustomModelDataComponent cmd = imeta.getCustomModelDataComponent();
+                cmd.setFloats(Collections.singletonList((float) customModelData));
+                imeta.setCustomModelDataComponent(cmd);
+            }
+
+            is.setItemMeta(imeta);
+        }
+
+        List<Integer> positions = cfg.getIntegerList("gui-sellitem.positions");
+        if (positions.isEmpty()) positions.add(inv.getSize() - 5);
+        for (Integer position : positions)
+            inv.setItem(position, new ItemStack(is));
+
+        String bMatStr = cfg.getString("gui-bottomrow.material");
+        if (bMatStr != null && !bMatStr.isBlank()) {
+            Material bMat = Material.getMaterial(bMatStr);
+            if (bMat == null) bMat = Material.GRAY_STAINED_GLASS_PANE;
+            ItemStack pane = new ItemStack(bMat);
+
+            ItemMeta bMeta = pane.getItemMeta();
+            if (bMeta != null) {
+                bMeta.setDisplayName(ChatColor.translateAlternateColorCodes('&', cfg.getString("gui-bottomrow.displayname")));
+
+                int customModelData = cfg.getInt("gui-bottomrow.custommodeldata");
+                if (customModelData > 0) {
+                    CustomModelDataComponent cmd = bMeta.getCustomModelDataComponent();
+                    cmd.setFloats(Collections.singletonList((float) customModelData));
+                    bMeta.setCustomModelDataComponent(cmd);
+                }
+
+                pane.setItemMeta(bMeta);
+            }
+
+            for (int i = inv.getSize() - 9; i < inv.getSize(); i++)
+                if (inv.getItem(i) == null || inv.getItem(i).getType().equals(Material.AIR))
+                    inv.setItem(i, pane.clone());
+        }
 
 		p.openInventory(inv);
-		this.getOpenShops().put(p, inv);	
-		
-		
+		this.getOpenShops().put(p, inv);
 	}
 	
 	/**
@@ -347,7 +376,7 @@ public class Main extends JavaPlugin {
 		ItemStack[] invContent = shopInventory.getContents();
 		invContent[shopInventory.getSize() - 5] = null;
 
-		List<String> lore = new ArrayList<String>();
+		List<String> lore = new ArrayList<>();
 		double[] totalPrice = {0d};
 
 		getSalableItems(invContent).forEach((item, amount) -> {
@@ -363,11 +392,19 @@ public class Main extends JavaPlugin {
 		if (sell.getItemMeta() == null)
 			return;
 
-		ItemMeta im = sell.getItemMeta();
-		im.setDisplayName(cfg.getString("gui-sellitem.displayname").replace('&', '§')
+		ItemMeta imeta = sell.getItemMeta();
+		imeta.setDisplayName(cfg.getString("gui-sellitem.displayname").replace('&', '§')
 				.replace("%total%", economy.format(totalPrice[0])));
-		im.setLore(lore);
-		sell.setItemMeta(im);
+		imeta.setLore(lore);
+
+        int customModelData = cfg.getInt("gui-sellitem.custommodeldata");
+        if (customModelData > 0) {
+            CustomModelDataComponent cmd = imeta.getCustomModelDataComponent();
+            cmd.setFloats(Collections.singletonList((float) customModelData));
+            imeta.setCustomModelDataComponent(cmd);
+        }
+
+		sell.setItemMeta(imeta);
 
 		shopInventory.setItem(shopInventory.getSize() - 5, sell);
 	}
