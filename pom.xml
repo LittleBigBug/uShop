@@ -20,11 +20,6 @@
 			<id>jitpack.io</id>
 			<url>https://jitpack.io</url>
 		</repository>
-		<!-- SpaceIO Repository -->
-		<repository>
-			<id>spaceio-snapshots</id>
-			<url>https://hub.spaceio.xyz/repository/maven-snapshots/</url>
-		</repository>
 	</repositories>
 	<dependencies>
 		<!--Spigot API -->
@@ -40,12 +35,6 @@
 			<artifactId>VaultAPI</artifactId>
 			<version>1.7</version>
 			<scope>provided</scope>
-		</dependency>
-		<!--SpaceIO Metrics -->
-		<dependency>
-			<groupId>de.spaceio</groupId>
-			<artifactId>SpaceIOMetrics</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 	<build>

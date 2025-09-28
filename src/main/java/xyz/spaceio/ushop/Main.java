@@ -39,7 +39,6 @@ import org.bukkit.scheduler.BukkitTask;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
-import de.Linus122.SpaceIOMetrics.Metrics;
 import net.milkbowl.vault.economy.Economy;
 import xyz.spaceio.customitem.CustomItem;
 
