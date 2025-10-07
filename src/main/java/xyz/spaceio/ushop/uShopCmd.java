@@ -13,19 +13,21 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import xyz.spaceio.ushop.customitem.CustomItem;
-import xyz.spaceio.ushop.customitem.Flags;
+import org.jetbrains.annotations.NotNull;
+import xyz.spaceio.ushop.item.CustomItem;
+import xyz.spaceio.ushop.item.Flags;
+import xyz.spaceio.ushop.item.SellableItem;
 
 public class uShopCmd implements CommandExecutor {
 
-	Main plugin;
+	private final Main plugin;
 
 	public uShopCmd(Main plugin) {
 		this.plugin = plugin;
 	}
 
 	@Override
-	public boolean onCommand(CommandSender cs, Command arg1, String arg2, String[] args) {
+	public boolean onCommand(CommandSender cs, @NotNull Command cmd, @NotNull String label, @NotNull String[] args) {
 		if (!cs.hasPermission("ushop.admin")) {
 			cs.sendMessage("§cYou dont have permissions to use this command!");
 			return true;
@@ -58,7 +60,7 @@ public class uShopCmd implements CommandExecutor {
                 ItemStack inHand = p.getInventory().getItemInMainHand();
                 double price = Double.parseDouble(args[1]);
 
-                CustomItem customItem = new CustomItem(p.getInventory().getItemInMainHand(), price);
+                CustomItem newCItem = new CustomItem(this.plugin, p.getInventory().getItemInMainHand(), price);
 
                 if (args.length > 2) {
                     // handling flags
@@ -66,7 +68,7 @@ public class uShopCmd implements CommandExecutor {
                         String flagName = args[i].toUpperCase();
                         try {
                             Flags flag = Flags.valueOf(flagName);
-                            customItem.addFlag(flag);
+                            newCItem.addFlag(flag);
                         } catch (Exception e) {
                             cs.sendMessage("§cFlag " + flagName + " not found. Valid flags are:");
                             List<String> flags = Arrays.stream(Flags.values()).map(flag -> flag.name().toLowerCase()).collect(Collectors.toList());
@@ -76,18 +78,22 @@ public class uShopCmd implements CommandExecutor {
                     }
                 }
 
-                Optional<CustomItem> result = plugin.findCustomItem(inHand);
+                Optional<SellableItem> result = plugin.findSellableItem(inHand);
                 if (result.isPresent()) {
-                    plugin.getCustomItems().remove(result.get());
-                    p.sendMessage("§aSuccessfully updated item:");
-                } else {
-                    p.sendMessage("§aSuccessfully added item:");
-                }
+                    if (!(result.get() instanceof CustomItem customItem)) {
+                        p.sendMessage("&cThis item is not able to be manually set");
+                        return true;
+                    }
 
-                plugin.addCustomItem(customItem);
+                    plugin.getCustomItems().remove(customItem);
+                    p.sendMessage("§aSuccessfully updated item:");
+                } else
+                    p.sendMessage("§aSuccessfully added item:");
+
+                plugin.addCustomItem(newCItem);
                 plugin.saveMainConfig();
 
-                p.sendMessage(plugin.getCustomItemDescription(customItem, 1).stream().toArray(String[]::new));
+                p.sendMessage(plugin.getCustomItemDescription(newCItem, 1).toArray(String[]::new));
                 return true;
 
             case "reload":

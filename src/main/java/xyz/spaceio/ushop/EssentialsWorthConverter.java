@@ -15,7 +15,8 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemStack;
 
-import xyz.spaceio.ushop.customitem.CustomItem;
+import xyz.spaceio.ushop.item.CustomItem;
+import xyz.spaceio.ushop.item.SellableItem;
 
 public class EssentialsWorthConverter {
 	
@@ -63,13 +64,13 @@ public class EssentialsWorthConverter {
                     continue;
                 }
 
-                Optional<CustomItem> customItemOpt = plugin.findCustomItem(new ItemStack(mat));
+                Optional<SellableItem> sellableItemOpt = plugin.findSellableItem(new ItemStack(mat));
 
-                if (customItemOpt.isPresent()) {
-                    CustomItem customItem = customItemOpt.get();
-                    customItem.setPrice(price);
-                } else {
-                    CustomItem customItem = new CustomItem(new ItemStack(mat), price);
+                if (sellableItemOpt.isPresent())
+                    if (sellableItemOpt.get() instanceof CustomItem customItem)
+                        customItem.setPrice(price);
+                else {
+                    CustomItem customItem = new CustomItem(plugin, new ItemStack(mat), price);
                     plugin.addCustomItem(customItem);
                 }
 

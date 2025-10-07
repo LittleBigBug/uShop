@@ -1,6 +1,6 @@
 name: uShop
 depends: [Vault]
-soft-depends: [Essentials]
+soft-depends: [Essentials, EvenMoreFish]
 author: Linus122
 main: xyz.spaceio.ushop.Main
 version: 2.3.3-SNAPSHOT

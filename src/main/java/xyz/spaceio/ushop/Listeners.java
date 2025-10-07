@@ -24,7 +24,7 @@ import org.bukkit.inventory.meta.BlockStateMeta;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
-import xyz.spaceio.ushop.customitem.CustomItem;
+import xyz.spaceio.ushop.item.SellableItem;
 
 
 public class Listeners implements Listener {
@@ -112,11 +112,11 @@ public class Listeners implements Listener {
         plugin.getEconomy().depositPlayer(p, total);
         p.sendMessage(plugin.getConfig().getString("message-sold").replace('&', '§').replace("%total%", plugin.getEconomy().format(total)));
 
-        HashMap<CustomItem, Integer> listOfItems = plugin.getSalableItems(e.getInventory().getContents());
+        HashMap<SellableItem, Integer> listOfItems = plugin.getSellableItems(e.getInventory().getContents());
         List<String> allLines = new ArrayList<>();
         allLines.add(ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("receipt.header")));
 
-        for (Entry<CustomItem, Integer> entry : listOfItems.entrySet()) {
+        for (Entry<SellableItem, Integer> entry : listOfItems.entrySet()) {
             List<String> desc = plugin.getCustomItemDescription(entry.getKey(), entry.getValue(), ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("receipt.format")));
             for (String str : desc) {
                 String date = new SimpleDateFormat("HH':'mm':'ss").format(new Date());
@@ -135,7 +135,7 @@ public class Listeners implements Listener {
             if (is == null) continue;
 
             if (!is.getType().toString().toUpperCase().contains("SHULKER_BOX")) {
-                if (is.getType() != Material.AIR && !plugin.isSalable(is))
+                if (is.getType() != Material.AIR && !plugin.isSellable(is))
                     p.getInventory().addItem(is);
                 continue;
             }
@@ -151,7 +151,7 @@ public class Listeners implements Listener {
 
                 if (
                         shulkerItem == null ||
-                        !plugin.isSalable(shulkerItem) ||
+                        !plugin.isSellable(shulkerItem) ||
                         shulkerItem.getType().equals(Material.AIR)
                 )
                     continue;

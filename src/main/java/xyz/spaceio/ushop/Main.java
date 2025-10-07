@@ -32,7 +32,10 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import net.milkbowl.vault.economy.Economy;
-import xyz.spaceio.ushop.customitem.CustomItem;
+import xyz.spaceio.ushop.integrations.emf.EMFItem;
+import xyz.spaceio.ushop.item.CustomItem;
+import xyz.spaceio.ushop.integrations.emf.EvenMoreFishIntegration;
+import xyz.spaceio.ushop.item.SellableItem;
 
 public class Main extends JavaPlugin {
 
@@ -40,6 +43,11 @@ public class Main extends JavaPlugin {
 	 * Vault Economy plugin
 	 */
 	private Economy economy = null;
+
+    /*
+     * EvenMoreFish Integration
+     */
+    private EvenMoreFishIntegration emf = null;
 
 	/*
 	 * Main config.yml
@@ -82,9 +90,8 @@ public class Main extends JavaPlugin {
 
 		this.getServer().getPluginManager().registerEvents(new Listeners(this), this);
 
-        if (this.getServer().getPluginManager().getPlugin("EvenMoreFish") != null) {
-
-        }
+        if (this.getServer().getPluginManager().getPlugin("EvenMoreFish") != null)
+            this.emf = new EvenMoreFishIntegration(this);
 
 		String fileName = new SimpleDateFormat("yyyy'-'MM'-'dd'_'HH'-'mm'-'ss'_'zzz'.log'").format(new Date());
         File dir = new File(getDataFolder(), "logs");
@@ -110,27 +117,27 @@ public class Main extends JavaPlugin {
 		return logs;
 	}
 	
-	public List<String> getCustomItemDescription(CustomItem item, int amount){
+	public List<String> getCustomItemDescription(SellableItem item, int amount){
 		return getCustomItemDescription(item, amount, cfg.getString("gui-item-enumeration-format").replace("&", "§"));
 	}
 
-	public List<String> getCustomItemDescription(CustomItem item, int amount, String itemEnumFormat){
+	public List<String> getCustomItemDescription(SellableItem item, int amount, String itemEnumFormat){
 		List<String> list = new ArrayList<String>();
-	
+
 		String s = itemEnumFormat.replace("%amount%", amount + "")
-				.replace("%material%", item.getDisplayname() == null ? WordUtils.capitalize(item.getMaterial().toLowerCase().replace("_", " ")) : item.getDisplayname())
+				.replace("%material%", item.getDisplayname() == null ? WordUtils.capitalize(item.getMaterialStr().toLowerCase().replace("_", " ")) : item.getDisplayname())
 				.replace("%price%", economy.format(item.getPrice() * amount));
 		list.add(s);
-		
+
 		// adding enchantements
-		item.getEnchantements().forEach((enchantement, level) -> {
+		item.getEnchantments().forEach((enchantement, level) -> {
 			list.add(String.format("§7%s %s", WordUtils.capitalize(enchantement), Utils.toRoman(level)));
 		});
-		
+
 		item.getFlags().forEach(flag -> {
 			list.add(String.format("§e%s", flag.name().toLowerCase()));
 		});
-		
+
 		return list;
 	}
 
@@ -138,12 +145,12 @@ public class Main extends JavaPlugin {
 	 * Saved all Custom items to the config.
 	 */
 	public void saveMainConfig() {
-		List<CustomItem> advancedItems = new ArrayList<CustomItem>();
-		List<String> simpleItems = new ArrayList<String>();
-		
+		List<CustomItem> advancedItems = new ArrayList<>();
+		List<String> simpleItems = new ArrayList<>();
+
 		for(CustomItem customItem : customItems)
 			if (customItem.isSimpleItem())
-				simpleItems.add(customItem.getMaterial() + ":" + customItem.getPrice());
+				simpleItems.add(customItem.getMaterialStr() + ":" + customItem.getPrice());
 			else advancedItems.add(customItem);
 
 		cfg.set("sell-prices-simple", simpleItems);
@@ -152,17 +159,17 @@ public class Main extends JavaPlugin {
 		this.saveConfig();
 	}
 
-	public HashMap<CustomItem, Integer> getSalableItems(ItemStack[] is) {
-		HashMap<CustomItem, Integer> customItemsMap = new HashMap<>();
+	public HashMap<SellableItem, Integer> getSellableItems(ItemStack[] is) {
+		HashMap<SellableItem, Integer> sellableItemsMap = new HashMap<>();
 
 		for (ItemStack stack : is) {
             if (stack == null) continue;
             if (!stack.getType().toString().toUpperCase().contains("SHULKER_BOX")) {
                 // check if item is in the custom item list
-                Optional<CustomItem> opt = findCustomItem(stack);
-                if (opt.isPresent() && this.isSalable(stack))
+                Optional<SellableItem> opt = findSellableItem(stack);
+                if (opt.isPresent() && this.isSellable(stack))
                     // add item to map
-                    customItemsMap.compute(opt.get(), (k, v) -> v == null ? stack.getAmount() : v + stack.getAmount());
+                    sellableItemsMap.compute(opt.get(), (k, v) -> v == null ? stack.getAmount() : v + stack.getAmount());
                 continue;
             }
 
@@ -171,33 +178,38 @@ public class Main extends JavaPlugin {
                 ItemStack shulkerItem = container.getItem(j);
                 if (shulkerItem == null || shulkerItem.getType().equals(Material.AIR)) continue;
 
-                Optional<CustomItem> opt = findCustomItem(shulkerItem);
-                if (opt.isEmpty() || !this.isSalable(shulkerItem)) continue;
+                Optional<SellableItem> opt = findSellableItem(shulkerItem);
+                if (opt.isEmpty() || !this.isSellable(shulkerItem)) continue;
 
                 // add item to map
-                customItemsMap.compute(opt.get(), (k, v) -> v == null ? shulkerItem.getAmount() : v + shulkerItem.getAmount());
+                sellableItemsMap.compute(opt.get(), (k, v) -> v == null ? shulkerItem.getAmount() : v + shulkerItem.getAmount());
             }
         }
-		return customItemsMap;
+
+		return sellableItemsMap;
 	}
-	
+
 	/**
 	 * Finds the representing Custom Item for a certain Item Stack
-	 * @param stack
-	 * @return
 	 */
-	public Optional<CustomItem> findCustomItem(ItemStack stack) {
-		return customItems.stream().filter((item) -> item.matches(stack)).findFirst();
+	public Optional<SellableItem> findSellableItem(ItemStack stack) {
+        if (this.emf != null) {
+            EMFItem emfItem = this.emf.getEmfItem(stack);
+            if (emfItem != null) return Optional.of(emfItem);
+        }
+
+        Optional<CustomItem> customItem = customItems.stream().filter((item) -> item.matches(stack)).findFirst();
+		return customItem.map(SellableItem.class::cast);
 	}
 
 	public double calcWorthOfContent(ItemStack[] content) {
-		HashMap<CustomItem, Integer> salable = getSalableItems(content);
-		return salable.keySet().stream().mapToDouble(v -> v.getPrice() * salable.get(v)).sum();
+		HashMap<SellableItem, Integer> sellable = getSellableItems(content);
+		return sellable.keySet().stream().mapToDouble(v -> v.getPrice() * sellable.get(v)).sum();
 	}
-	
-	public boolean isSalable(ItemStack is) {
-		if(is == null || is.getType() == Material.AIR) return false;
-		Optional<CustomItem> customItemOptional = this.findCustomItem(is);
+
+	public boolean isSellable(ItemStack is) {
+		if (is == null || is.getType() == Material.AIR) return false;
+		Optional<SellableItem> customItemOptional = this.findSellableItem(is);
         return customItemOptional.filter(customItem -> customItem.getPrice() > 0d).isPresent();
     }
 
@@ -338,7 +350,7 @@ public class Main extends JavaPlugin {
 		if(this.cfg.contains("sell-prices-simple")) {
 			for(String entry : this.cfg.getStringList("sell-prices-simple")) {
 				try {
-					CustomItem ci = new CustomItem(new ItemStack(Material.valueOf(entry.split(":")[0])), Double.parseDouble(entry.split(":")[1]));
+					CustomItem ci = new CustomItem(this, new ItemStack(Material.valueOf(entry.split(":")[0])), Double.parseDouble(entry.split(":")[1]));
 					customItems.add(ci);
 				}catch(Exception e) {
 					System.out.println("Error in config.yml: " + entry);
@@ -351,7 +363,7 @@ public class Main extends JavaPlugin {
 			this.saveConfig();
 			for(Material mat : Material.values()) {
 				if (mat.isItem())
-					customItems.add(new CustomItem(new ItemStack(mat), 0d));
+					customItems.add(new CustomItem(this, new ItemStack(mat), 0d));
 			}
 		}
 	}
@@ -379,7 +391,7 @@ public class Main extends JavaPlugin {
 		List<String> lore = new ArrayList<>();
 		double[] totalPrice = {0d};
 
-		getSalableItems(invContent).forEach((item, amount) -> {
+		getSellableItems(invContent).forEach((item, amount) -> {
 			double totalStackPrice = item.getPrice() * amount;
 			totalPrice[0] += totalStackPrice;
 			lore.addAll(getCustomItemDescription(item, amount));
@@ -409,5 +421,7 @@ public class Main extends JavaPlugin {
             shopInventory.setItem(position, sell);
         }
 	}
+
+    public EvenMoreFishIntegration getEmf() { return emf; }
 
 }

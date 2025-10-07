@@ -20,6 +20,10 @@
 			<id>jitpack.io</id>
 			<url>https://jitpack.io</url>
 		</repository>
+        <repository>
+            <id>evenmorefish</id>
+            <url>https://repo.codemc.io/repository/EvenMoreFish</url>
+        </repository>
 	</repositories>
 	<dependencies>
 		<!--Spigot API -->
@@ -36,6 +40,13 @@
 			<version>1.7</version>
 			<scope>provided</scope>
 		</dependency>
+        <dependency>
+            <groupId>com.oheers.evenmorefish</groupId>
+            <artifactId>even-more-fish-plugin</artifactId>
+            <version>2.0.12</version>
+            <scope>provided</scope>
+            <classifier>shadow</classifier>
+        </dependency>
 	</dependencies>
 	<build>
 		<!-- Uses the properties in this file for plugin.yml and config.yml -->
