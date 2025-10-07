@@ -13,8 +13,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import xyz.spaceio.customitem.CustomItem;
-import xyz.spaceio.customitem.Flags;
+import xyz.spaceio.ushop.customitem.CustomItem;
+import xyz.spaceio.ushop.customitem.Flags;
 
 public class uShopCmd implements CommandExecutor {
 

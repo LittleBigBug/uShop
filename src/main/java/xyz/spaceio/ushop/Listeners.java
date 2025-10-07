@@ -22,10 +22,9 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.BlockStateMeta;
 
 import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
-import xyz.spaceio.customitem.CustomItem;
+import xyz.spaceio.ushop.customitem.CustomItem;
 
 
 public class Listeners implements Listener {

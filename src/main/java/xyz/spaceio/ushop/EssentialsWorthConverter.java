@@ -15,7 +15,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemStack;
 
-import xyz.spaceio.customitem.CustomItem;
+import xyz.spaceio.ushop.customitem.CustomItem;
 
 public class EssentialsWorthConverter {
 	

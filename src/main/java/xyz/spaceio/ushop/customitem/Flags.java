@@ -1,4 +1,4 @@
-package xyz.spaceio.customitem;
+package xyz.spaceio.ushop.customitem;
 
 public enum Flags{
 	IGNORE_ENCHANTMENTS, IGNORE_DURABILITY, IGNORE_LORE, IGNORE_DISPLAYNAME, IGNORE_META, IGNORE_CUSTOM_MODEL_DATA

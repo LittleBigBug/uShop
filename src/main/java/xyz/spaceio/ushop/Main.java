@@ -32,7 +32,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import net.milkbowl.vault.economy.Economy;
-import xyz.spaceio.customitem.CustomItem;
+import xyz.spaceio.ushop.customitem.CustomItem;
 
 public class Main extends JavaPlugin {
 
@@ -81,7 +81,11 @@ public class Main extends JavaPlugin {
 		this.getCommand("ushop").setExecutor(new uShopCmd(this));
 
 		this.getServer().getPluginManager().registerEvents(new Listeners(this), this);
-		
+
+        if (this.getServer().getPluginManager().getPlugin("EvenMoreFish") != null) {
+
+        }
+
 		String fileName = new SimpleDateFormat("yyyy'-'MM'-'dd'_'HH'-'mm'-'ss'_'zzz'.log'").format(new Date());
         File dir = new File(getDataFolder(), "logs");
         dir.mkdirs();
