@@ -58,17 +58,22 @@ public class Listeners implements Listener {
 	@EventHandler
 	public void onClick(final InventoryClickEvent e){
 		if (
-            e.getClickedInventory() instanceof PlayerInventory ||
             !(e.getWhoClicked() instanceof Player p) ||
             !plugin.isShopGUI(e.getView())
         ) return;
+
+        boolean shiftClick = e.getClick() == ClickType.SHIFT_LEFT || e.getClick() == ClickType.SHIFT_RIGHT;
+        boolean clickedPlayerInv = e.getClickedInventory() instanceof PlayerInventory;
+
+        if (clickedPlayerInv && !shiftClick) return;
 
         Bukkit.getScheduler().runTaskLater(plugin, () ->
 			this.plugin.updateUI(e.getView().getTopInventory()),
             0L
         );
 
-        if (e.getCurrentItem() == null) return;
+        boolean shiftClickFromPlayerInv = shiftClick && clickedPlayerInv;
+        if (e.getCurrentItem() == null || shiftClickFromPlayerInv) return;
 
         Inventory inv = e.getInventory();
         FileConfiguration cfg = this.plugin.getConfig();
@@ -94,7 +99,7 @@ public class Listeners implements Listener {
                 cooldowns.get(p.getName()) + 2000 > System.currentTimeMillis())
             return;
 
-        if (e.getClick() == ClickType.SHIFT_RIGHT || e.getClick() == ClickType.SHIFT_LEFT) return;
+        if (shiftClick) return;
 
         //REMOVE SELL ITEM
         e.getInventory().setItem(e.getSlot(), new ItemStack(Material.AIR));
