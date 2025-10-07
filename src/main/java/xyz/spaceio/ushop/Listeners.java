@@ -38,36 +38,35 @@ public class Listeners implements Listener {
 
 	@EventHandler
 	public void onClose(InventoryCloseEvent e) {
-		if (!plugin.getOpenShops().containsKey(e.getPlayer())) {
-			return;
-		}
-
-		if (plugin.getOpenShops().get(e.getPlayer()) != e.getInventory()) {
-			return;
-		}
+        if (
+            !(e.getPlayer() instanceof Player p) ||
+            !plugin.getOpenShops().containsKey(p) ||
+            plugin.getOpenShops().get(p) != e.getInventory()
+        ) return;
 
 		// add items back to player's inventory
 		for (int i = 0; i < e.getInventory().getSize() - 9; i++) {
 			ItemStack itemStack = e.getInventory().getItem(i);
 
-			if (itemStack != null && itemStack.getType() != Material.AIR) {
+			if (itemStack != null && itemStack.getType() != Material.AIR)
 				e.getPlayer().getInventory().addItem(itemStack);
-			}
 		}
 
-		plugin.getOpenShops().remove(e.getPlayer());
+		plugin.getOpenShops().remove(p);
 	}
 
-	@SuppressWarnings("deprecation")
 	@EventHandler
 	public void onClick(final InventoryClickEvent e){
-		if (e.getClickedInventory() instanceof PlayerInventory) return;
-        if (!(e.getWhoClicked() instanceof Player)) return;
-        if (!plugin.isShopGUI(e.getView())) return;
+		if (
+            e.getClickedInventory() instanceof PlayerInventory ||
+            !(e.getWhoClicked() instanceof Player p) ||
+            !plugin.isShopGUI(e.getView())
+        ) return;
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-			this.plugin.updateUI(e.getView().getTopInventory());
-		}, 0L);
+        Bukkit.getScheduler().runTaskLater(plugin, () ->
+			this.plugin.updateUI(e.getView().getTopInventory()),
+            0L
+        );
 
         if (e.getCurrentItem() == null) return;
 
@@ -86,84 +85,90 @@ public class Listeners implements Listener {
             return;
         }
 
-        if (isSellBtnItem && !e.getInventory().getViewers().isEmpty()){
-            e.setCancelled(true);
-            e.setResult(Result.DENY);
+        if (!isSellBtnItem || e.getInventory().getViewers().isEmpty()) return;
 
-            final Player p = (Player) e.getInventory().getViewers().get(0);
+        e.setCancelled(true);
+        e.setResult(Result.DENY);
 
-            if (cooldowns.containsKey(p.getName()) &&
-                    cooldowns.get(p.getName()) + 2000 > System.currentTimeMillis())
-                return;
+        if (cooldowns.containsKey(p.getName()) &&
+                cooldowns.get(p.getName()) + 2000 > System.currentTimeMillis())
+            return;
 
-            if (e.getClick() != ClickType.SHIFT_RIGHT && e.getClick() != ClickType.SHIFT_LEFT){
-                //REMOVE SELL ITEM
-                e.getInventory().setItem(e.getSlot(), new ItemStack(Material.AIR));
-                if(e.getCursor() != null){
-                    e.getInventory().addItem(e.getCursor());
-                    e.setCursor(null);
-                }
-                //SELL
-                double total = plugin.calcWorthOfContent(e.getInventory().getContents());
-                plugin.getEconomy().depositPlayer(p, total);
-                p.sendMessage(plugin.getConfig().getString("message-sold").replace('&', '§').replace("%total%", plugin.getEconomy().format(total)));
+        if (e.getClick() == ClickType.SHIFT_RIGHT || e.getClick() == ClickType.SHIFT_LEFT) return;
 
-                HashMap<CustomItem, Integer> listOfItems = plugin.getSalableItems(e.getInventory().getContents());
-                List<String> allLines = new ArrayList<>();
-                allLines.add(ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("receipt.header")));
-                for (Entry<CustomItem, Integer> entry : listOfItems.entrySet()) {
-                    List<String> desc = plugin.getCustomItemDescription(entry.getKey(), entry.getValue(), ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("receipt.format")));
-                    for (String str : desc) {
-                        String date = new SimpleDateFormat("HH':'mm':'ss").format(new Date());
-                        plugin.getLogs().println("[" + date + "] " + p.getName() + " had sold -> " + ChatColor.stripColor(str));
-                    }
-                    allLines.addAll(desc);
-                }
-                TextComponent receipt = new TextComponent(ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("receipt.message")));
-                receipt.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(String.join("\n" + ChatColor.RESET, allLines))));
-                p.spigot().sendMessage(receipt);
-
-                // put unsalable items back to player's inventory
-                for(int i = 0; i < e.getInventory().getSize() - 9; i++){
-                    ItemStack is = e.getInventory().getItem(i);
-                    if (is == null)
-                        continue;
-                    if (is.getType().toString().toUpperCase().contains("SHULKER_BOX")) {
-                        BlockStateMeta meta = (BlockStateMeta) is.getItemMeta();
-                        BlockState state = meta.getBlockState();
-                        Inventory container = ((InventoryHolder) state).getInventory();
-                        for (int j = 0; j < container.getSize(); j++) {
-                            ItemStack shulkerItem = container.getItem(j);
-                            if (shulkerItem != null && !shulkerItem.getType().equals(Material.AIR)) {
-                                if (shulkerItem.getType() != Material.AIR) {
-                                    if (plugin.isSalable(shulkerItem)) {
-                                        container.setItem(j, null);
-                                    }
-                                }
-                            }
-                        }
-                        meta.setBlockState(state);
-                        is.setItemMeta(meta);
-                        p.getInventory().addItem(is);
-                    } else if (is.getType() != Material.AIR && !plugin.isSalable(is)) {
-                        p.getInventory().addItem(is);
-                    }
-
-                }
-
-                cooldowns.put(p.getName(), System.currentTimeMillis());
-                e.getInventory().clear();
-                //Run later because the inventory bugs if closed immediately.
-                Bukkit.getScheduler().runTaskLater(plugin, new Runnable(){
-                    public void run(){
-                        p.closeInventory();
-                        p.updateInventory();
-                    }
-                }, 5L);
-            }
+        //REMOVE SELL ITEM
+        e.getInventory().setItem(e.getSlot(), new ItemStack(Material.AIR));
+        if (e.getCursor() != null){
+            e.getInventory().addItem(e.getCursor());
+            e.setCursor(null);
         }
+
+        //SELL
+        double total = plugin.calcWorthOfContent(e.getInventory().getContents());
+        plugin.getEconomy().depositPlayer(p, total);
+        p.sendMessage(plugin.getConfig().getString("message-sold").replace('&', '§').replace("%total%", plugin.getEconomy().format(total)));
+
+        HashMap<CustomItem, Integer> listOfItems = plugin.getSalableItems(e.getInventory().getContents());
+        List<String> allLines = new ArrayList<>();
+        allLines.add(ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("receipt.header")));
+
+        for (Entry<CustomItem, Integer> entry : listOfItems.entrySet()) {
+            List<String> desc = plugin.getCustomItemDescription(entry.getKey(), entry.getValue(), ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("receipt.format")));
+            for (String str : desc) {
+                String date = new SimpleDateFormat("HH':'mm':'ss").format(new Date());
+                plugin.getLogs().println("[" + date + "] " + p.getName() + " had sold -> " + ChatColor.stripColor(str));
+            }
+            allLines.addAll(desc);
+        }
+
+        TextComponent receipt = new TextComponent(ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("receipt.message")));
+        receipt.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(String.join("\n" + ChatColor.RESET, allLines))));
+        p.spigot().sendMessage(receipt);
+
+        // put unsalable items back to player's inventory
+        for (int i = 0; i < e.getInventory().getSize() - 9; i++){
+            ItemStack is = e.getInventory().getItem(i);
+            if (is == null) continue;
+
+            if (!is.getType().toString().toUpperCase().contains("SHULKER_BOX")) {
+                if (is.getType() != Material.AIR && !plugin.isSalable(is))
+                    p.getInventory().addItem(is);
+                continue;
+            }
+
+            BlockStateMeta meta = (BlockStateMeta) is.getItemMeta();
+            if (meta == null) continue;
+
+            BlockState state = meta.getBlockState();
+            Inventory container = ((InventoryHolder) state).getInventory();
+
+            for (int j = 0; j < container.getSize(); j++) {
+                ItemStack shulkerItem = container.getItem(j);
+
+                if (
+                        shulkerItem == null ||
+                        !plugin.isSalable(shulkerItem) ||
+                        shulkerItem.getType().equals(Material.AIR)
+                )
+                    continue;
+
+                container.setItem(j, null);
+            }
+
+            meta.setBlockState(state);
+            is.setItemMeta(meta);
+            p.getInventory().addItem(is);
+        }
+
+        cooldowns.put(p.getName(), System.currentTimeMillis());
+        e.getInventory().clear();
+        //Run later because the inventory bugs if closed immediately.
+        Bukkit.getScheduler().runTaskLater(plugin, new Runnable(){
+            public void run(){
+                p.closeInventory();
+                p.updateInventory();
+            }
+        }, 5L);
     }
-		
-	
 
 }

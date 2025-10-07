@@ -137,44 +137,43 @@ public class Main extends JavaPlugin {
 		List<CustomItem> advancedItems = new ArrayList<CustomItem>();
 		List<String> simpleItems = new ArrayList<String>();
 		
-		for(CustomItem customItem : customItems) {
-			if(customItem.isSimpleItem()) {
+		for(CustomItem customItem : customItems)
+			if (customItem.isSimpleItem())
 				simpleItems.add(customItem.getMaterial() + ":" + customItem.getPrice());
-			}else {
-				advancedItems.add(customItem);
-			}
-		}
+			else advancedItems.add(customItem);
+
 		cfg.set("sell-prices-simple", simpleItems);
 		cfg.set("sell-prices", gson.toJson(advancedItems));
+
 		this.saveConfig();
 	}
 
 	public HashMap<CustomItem, Integer> getSalableItems(ItemStack[] is) {
-		HashMap<CustomItem, Integer> customItemsMap = new HashMap<CustomItem, Integer>();
+		HashMap<CustomItem, Integer> customItemsMap = new HashMap<>();
+
 		for (ItemStack stack : is) {
-			if (stack != null) {
-				if (stack.getType().toString().toUpperCase().contains("SHULKER_BOX")) {
-					Inventory container = ((InventoryHolder) ((BlockStateMeta) stack.getItemMeta()).getBlockState()).getInventory();
-					for (int j = 0; j < container.getSize(); j++) {
-						ItemStack shulkerItem = container.getItem(j);
-						if (shulkerItem != null && !shulkerItem.getType().equals(Material.AIR)) {
-							Optional<CustomItem> opt = findCustomItem(shulkerItem);
-							if(opt.isPresent() && this.isSalable(shulkerItem)) {
-								// add item to map
-								customItemsMap.compute(opt.get(), (k, v) -> v == null ? shulkerItem.getAmount() : v + shulkerItem.getAmount());
-							}
-						}
-					}										
-				} else {
-					// check if item is in the custom item list
-					Optional<CustomItem> opt = findCustomItem(stack);
-					if(opt.isPresent() && this.isSalable(stack)) {
-						// add item to map
-						customItemsMap.compute(opt.get(), (k, v) -> v == null ? stack.getAmount() : v + stack.getAmount());
-					}
-				}		
-			}
-		}
+            if (stack == null) continue;
+            if (!stack.getType().toString().toUpperCase().contains("SHULKER_BOX")) {
+                // check if item is in the custom item list
+                Optional<CustomItem> opt = findCustomItem(stack);
+                if (opt.isPresent() && this.isSalable(stack))
+                    // add item to map
+                    customItemsMap.compute(opt.get(), (k, v) -> v == null ? stack.getAmount() : v + stack.getAmount());
+                continue;
+            }
+
+            Inventory container = ((InventoryHolder) ((BlockStateMeta) stack.getItemMeta()).getBlockState()).getInventory();
+            for (int j = 0; j < container.getSize(); j++) {
+                ItemStack shulkerItem = container.getItem(j);
+                if (shulkerItem == null || shulkerItem.getType().equals(Material.AIR)) continue;
+
+                Optional<CustomItem> opt = findCustomItem(shulkerItem);
+                if (opt.isEmpty() || !this.isSalable(shulkerItem)) continue;
+
+                // add item to map
+                customItemsMap.compute(opt.get(), (k, v) -> v == null ? shulkerItem.getAmount() : v + shulkerItem.getAmount());
+            }
+        }
 		return customItemsMap;
 	}
 	
@@ -193,15 +192,10 @@ public class Main extends JavaPlugin {
 	}
 	
 	public boolean isSalable(ItemStack is) {
-		if(is == null || is.getType() == null || is.getType() == Material.AIR) return false;
+		if(is == null || is.getType() == Material.AIR) return false;
 		Optional<CustomItem> customItemOptional = this.findCustomItem(is);
-		if(customItemOptional.isPresent()) {
-			if(customItemOptional.get().getPrice() > 0d) {
-				return true;
-			}
-		}
-		return false;
-	}
+        return customItemOptional.filter(customItem -> customItem.getPrice() > 0d).isPresent();
+    }
 
 	public Economy getEconomy() {
 		return economy;
@@ -374,7 +368,9 @@ public class Main extends JavaPlugin {
 	public void updateUI(Inventory shopInventory) {
 		// Update
 		ItemStack[] invContent = shopInventory.getContents();
-		invContent[shopInventory.getSize() - 5] = null;
+
+        List<Integer> positions = cfg.getIntegerList("gui-sellitem.positions");
+        for (Integer position : positions) invContent[position] = null;
 
 		List<String> lore = new ArrayList<>();
 		double[] totalPrice = {0d};
@@ -385,28 +381,29 @@ public class Main extends JavaPlugin {
 			lore.addAll(getCustomItemDescription(item, amount));
 		});
 
-		ItemStack sell = shopInventory.getItem(shopInventory.getSize() - 5);
+        for (Integer position : positions) {
+            ItemStack sell = shopInventory.getItem(position);
 
-		if (sell == null)
-			return;
-		if (sell.getItemMeta() == null)
-			return;
+            if (sell == null || sell.getItemMeta() == null) continue;
 
-		ItemMeta imeta = sell.getItemMeta();
-		imeta.setDisplayName(cfg.getString("gui-sellitem.displayname").replace('&', '§')
-				.replace("%total%", economy.format(totalPrice[0])));
-		imeta.setLore(lore);
+            ItemMeta imeta = sell.getItemMeta();
+            imeta.setDisplayName(
+                    cfg.getString("gui-sellitem.displayname")
+                        .replace('&', '§')
+                        .replace("%total%", economy.format(totalPrice[0]))
+            );
+            imeta.setLore(lore);
 
-        int customModelData = cfg.getInt("gui-sellitem.custommodeldata");
-        if (customModelData > 0) {
-            CustomModelDataComponent cmd = imeta.getCustomModelDataComponent();
-            cmd.setFloats(Collections.singletonList((float) customModelData));
-            imeta.setCustomModelDataComponent(cmd);
+            int customModelData = cfg.getInt("gui-sellitem.custommodeldata");
+            if (customModelData > 0) {
+                CustomModelDataComponent cmd = imeta.getCustomModelDataComponent();
+                cmd.setFloats(Collections.singletonList((float) customModelData));
+                imeta.setCustomModelDataComponent(cmd);
+            }
+
+            sell.setItemMeta(imeta);
+            shopInventory.setItem(position, sell);
         }
-
-		sell.setItemMeta(imeta);
-
-		shopInventory.setItem(shopInventory.getSize() - 5, sell);
 	}
 
 }
